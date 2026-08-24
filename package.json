@@ -1,6 +1,6 @@
 {
   "name": "whatsapp-sticker-plugin",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "private": true,
   "description": "Permission-minimal Chromium extension that routes one dropped image into WhatsApp Web's native sticker editor.",
   "scripts": {

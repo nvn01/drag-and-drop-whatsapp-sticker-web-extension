@@ -9,7 +9,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 test("manifest is WhatsApp-only and permission-minimal", async () => {
   const manifest = JSON.parse(await readFile(path.join(root, "manifest.json"), "utf8"));
   assert.equal(manifest.manifest_version, 3);
-  assert.equal(manifest.version, "0.2.4");
+  assert.equal(manifest.version, "0.2.5");
   assert.deepEqual(manifest.permissions, ["activeTab", "scripting", "storage"]);
   assert.equal(manifest.host_permissions, undefined);
   assert.equal(manifest.background.service_worker, "src/service-worker.js");

@@ -11,9 +11,13 @@
   const STICKER_INPUT_SELECTOR = 'footer input[type="file"][accept="image/*"]';
   const EDITOR_PROOF_SELECTOR =
     '[data-testid="drawer-middle"] [data-testid="media-editor-copy-button"]';
+  const CHAT_ROW_SELECTOR = '#pane-side [role="row"][data-testid^="list-item-"]';
   const DRAG_ATTACH_FLOW_NAME = "AttachMediaFlow";
   const DRAG_ATTACH_FLOW_WAIT_MS = 1000;
   const EDITOR_WAIT_MS = 5000;
+  const CHAT_CONTEXT_WAIT_MS = 2000;
+  const CHAT_CONTEXT_STABLE_MS = 120;
+  const CHAT_CONTEXT_POLL_MS = 25;
 
   if (root[INSTALL_KEY] || !root[POLICY_KEY]) {
     return;
@@ -33,6 +37,8 @@
   let controlRevision = 0;
   let currentStatus = "idle";
   let leaveTimer = 0;
+  let conversationNavigationRevision = 0;
+  let pendingConversationNavigation = null;
 
   function emitStatus(state, message) {
     if (state === currentStatus && !message) {
@@ -66,38 +72,116 @@
   }
 
   function findStickerContext() {
-    const conversation = document.querySelector(CONVERSATION_SELECTOR);
-    if (!conversation || !isVisible(conversation)) {
-      return null;
-    }
-
-    const composer = conversation.querySelector(COMPOSER_SELECTOR);
-    if (
-      !composer ||
-      composer.getAttribute("contenteditable") !== "true" ||
-      composer.getAttribute("aria-disabled") === "true"
-    ) {
-      return null;
-    }
-
     if (document.querySelector(EDITOR_PROOF_SELECTOR)) {
       return null;
     }
 
-    const inputs = Array.from(conversation.querySelectorAll(STICKER_INPUT_SELECTOR)).filter(
-      (input) =>
-        input instanceof HTMLInputElement &&
-        input.type === "file" &&
-        input.accept === "image/*" &&
-        !input.disabled &&
-        !input.multiple,
-    );
+    const contexts = Array.from(document.querySelectorAll(CONVERSATION_SELECTOR))
+      .filter((conversation) => isVisible(conversation))
+      .map((conversation) => {
+        const composers = Array.from(conversation.querySelectorAll(COMPOSER_SELECTOR)).filter(
+          (composer) =>
+            composer.getAttribute("contenteditable") === "true" &&
+            composer.getAttribute("aria-disabled") !== "true",
+        );
+        const inputs = Array.from(
+          conversation.querySelectorAll(STICKER_INPUT_SELECTOR),
+        ).filter(
+          (input) =>
+            input instanceof HTMLInputElement &&
+            input.type === "file" &&
+            input.accept === "image/*" &&
+            !input.disabled &&
+            !input.multiple,
+        );
 
-    if (inputs.length !== 1) {
+        return composers.length === 1 && inputs.length === 1
+          ? { conversation, composer: composers[0], input: inputs[0] }
+          : null;
+      })
+      .filter(Boolean);
+
+    if (contexts.length !== 1) {
       return null;
     }
 
-    return { conversation, input: inputs[0] };
+    return contexts[0];
+  }
+
+  function isSameStickerContext(left, right) {
+    return Boolean(
+      left &&
+        right &&
+        left.conversation === right.conversation &&
+        left.composer === right.composer &&
+        left.input === right.input,
+    );
+  }
+
+  function recordConversationNavigation(event) {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    const row = target.closest(CHAT_ROW_SELECTOR);
+    if (!row || row.querySelector('[aria-selected="true"]')) {
+      return;
+    }
+
+    conversationNavigationRevision += 1;
+    pendingConversationNavigation = {
+      previousContext: findStickerContext(),
+      revision: conversationNavigationRevision,
+      startedAt: Date.now(),
+    };
+  }
+
+  async function resolveStableStickerContext(initialContext, navigationRevision) {
+    const navigation = pendingConversationNavigation;
+    const navigationIsPending =
+      navigation?.revision === navigationRevision &&
+      Date.now() - navigation.startedAt <= CHAT_CONTEXT_WAIT_MS;
+
+    if (!navigationIsPending) {
+      const currentContext = findStickerContext();
+      return isSameStickerContext(initialContext, currentContext) ? currentContext : null;
+    }
+
+    const deadline = navigation.startedAt + CHAT_CONTEXT_WAIT_MS;
+    let stableContext = null;
+    let stableSince = 0;
+
+    while (Date.now() <= deadline) {
+      if (conversationNavigationRevision !== navigationRevision) {
+        return null;
+      }
+
+      const currentContext = findStickerContext();
+      const stillUsingPreviousContext = isSameStickerContext(
+        currentContext,
+        navigation.previousContext,
+      );
+
+      if (currentContext && !stillUsingPreviousContext) {
+        if (isSameStickerContext(currentContext, stableContext)) {
+          if (Date.now() - stableSince >= CHAT_CONTEXT_STABLE_MS) {
+            pendingConversationNavigation = null;
+            return currentContext;
+          }
+        } else {
+          stableContext = currentContext;
+          stableSince = Date.now();
+        }
+      } else {
+        stableContext = null;
+        stableSince = 0;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, CHAT_CONTEXT_POLL_MS));
+    }
+
+    return null;
   }
 
   function readTransferData(dataTransfer, type) {
@@ -215,12 +299,7 @@
     });
   }
 
-  async function closeWhatsAppDragAttachFlow(uiDismissApi) {
-    const flow = getActiveDragAttachFlow(uiDismissApi);
-    if (!flow) {
-      return true;
-    }
-
+  async function closeWhatsAppDragAttachFlow(uiDismissApi, flow) {
     if (typeof flow.requestDismiss !== "function") {
       return false;
     }
@@ -349,9 +428,16 @@
       return;
     }
 
+    const dragAttachFlow = getActiveDragAttachFlow(uiDismissApi);
+    if (!dragAttachFlow || typeof dragAttachFlow.requestDismiss !== "function") {
+      emitStatus("idle");
+      return;
+    }
+
     stopWhatsAppDrop(event);
     dropInFlight = true;
     const startedAtRevision = controlRevision;
+    const startedAtNavigationRevision = conversationNavigationRevision;
     emitStatus("processing");
 
     try {
@@ -360,13 +446,15 @@
         throw new Error("unsupported-image");
       }
 
-      const attachFlowClosed = await closeWhatsAppDragAttachFlow(uiDismissApi);
+      const attachFlowClosed = await closeWhatsAppDragAttachFlow(uiDismissApi, dragAttachFlow);
       if (!extensionEnabled || startedAtRevision !== controlRevision) {
         throw new Error("extension-disabled");
       }
-      const freshContext = attachFlowClosed ? findStickerContext() : null;
+      const freshContext = attachFlowClosed
+        ? await resolveStableStickerContext(context, startedAtNavigationRevision)
+        : null;
       if (!freshContext) {
-        throw new Error("drag-attach-flow-still-open");
+        throw new Error("chat-context-changed");
       }
 
       routeFileToStickerInput(freshContext.input, files[0]);
@@ -375,9 +463,14 @@
         editorOpened ? "opened" : "failed",
         editorOpened ? "" : "WhatsApp did not open the sticker editor.",
       );
-    } catch {
+    } catch (error) {
       if (extensionEnabled && startedAtRevision === controlRevision) {
-        emitStatus("failed", "Could not open the sticker editor. Use Create Sticker and retry.");
+        emitStatus(
+          "failed",
+          error?.message === "chat-context-changed"
+            ? "Chat changed. Drop the image again."
+            : "Could not open the sticker editor. Use Create Sticker and retry.",
+        );
       } else {
         emitStatus("idle");
       }
@@ -396,6 +489,7 @@
     root[method]("dragover", previewEligibleDrop, true);
     root[method]("dragleave", scheduleDragEnd, true);
     root[method]("drop", handleDrop, true);
+    root[method]("click", recordConversationNavigation, true);
     dragListenersAttached = shouldAttach;
   }
 

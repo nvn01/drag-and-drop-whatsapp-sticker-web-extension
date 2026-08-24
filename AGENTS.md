@@ -8,7 +8,7 @@
 
 ## Current Status
 
-- Version 0.2.4 is the Chrome Web Store publication candidate with policy and supply-chain hardening.
+- Version 0.2.5 fixes stale sticker-input routing while WhatsApp switches conversations.
 - Automated policy, build, packaging, fixture, and extension-world checks are available.
 - Live Brave inspection confirmed that WhatsApp's hidden image picker opens the sticker editor when its change handler receives a `File`.
 - The confirmed internal call uses `stickerMaker: true` and `sendAsSticker: true`.
@@ -86,7 +86,7 @@ scripts/
 
 ## Release Rules
 
-- Use semantic versions; version 0.2.4 is the current branded public-release candidate.
+- Use semantic versions; version 0.2.5 is the current local public-release candidate.
 - Release the same tested artifact; do not rebuild a different archive for publishing.
 - Do not publish to the Chrome Web Store, push to a remote, or create a release without explicit approval.
 - Document that the extension is unofficial, user-triggered, and not affiliated with WhatsApp or Meta.
