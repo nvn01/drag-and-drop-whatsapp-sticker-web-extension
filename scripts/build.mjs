@@ -20,6 +20,7 @@ const sourceFiles = [
   "src/overlay.css",
   "src/service-worker.js",
 ];
+const canonicalTextExtensions = new Set([".css", ".js", ".json"]);
 
 if (path.dirname(dist) !== root || path.basename(dist) !== "dist") {
   throw new Error("Refusing to build outside the project dist directory");
@@ -34,9 +35,15 @@ if (manifest.version !== packageJson.version) {
 await rm(dist, { force: true, recursive: true });
 
 for (const relativePath of sourceFiles) {
+  const source = path.join(root, relativePath);
   const destination = path.join(dist, relativePath);
   await mkdir(path.dirname(destination), { recursive: true });
-  await copyFile(path.join(root, relativePath), destination);
+  if (canonicalTextExtensions.has(path.extname(relativePath))) {
+    const contents = await readFile(source, "utf8");
+    await writeFile(destination, contents.replace(/\r\n/g, "\n"));
+  } else {
+    await copyFile(source, destination);
+  }
 }
 
 const buildInfo = {

@@ -81,6 +81,13 @@ if (isolatedSource.includes("innerHTML")) {
   throw new Error("Runtime UI must not construct DOM through innerHTML");
 }
 
+for (const relativePath of actualFiles.filter((file) => /\.(?:css|js|json)$/.test(file))) {
+  const contents = await readFile(path.join(dist, relativePath), "utf8");
+  if (contents.includes("\r")) {
+    throw new Error(`Build text file is not canonical LF: ${relativePath}`);
+  }
+}
+
 console.log(
   `Build verified: ${actualFiles.length} files, WhatsApp-only, no broad host permissions`,
 );
