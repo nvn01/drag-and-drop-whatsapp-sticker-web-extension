@@ -1,0 +1,31 @@
+name: Verify extension
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify and package
+        run: npm run release:chrome
+
+      - name: Upload exact release candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: whatsapp-sticker-plugin-${{ github.sha }}
+          path: .artifacts/*.zip
+          if-no-files-found: error

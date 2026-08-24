@@ -1,0 +1,17 @@
+dist/
+.artifacts/
+node_modules/
+coverage/
+output logo/
+.plan/
+.env
+.env.*
+!.env.example
+*.crx
+*.pem
+*.zip
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

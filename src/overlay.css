@@ -1,0 +1,79 @@
+#wa-sticker-plugin-overlay {
+  position: fixed;
+  z-index: 2147483647;
+  top: 50%;
+  left: 66%;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  max-width: min(360px, calc(100vw - 32px));
+  padding: 10px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  background: rgba(17, 27, 33, 0.94);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  color: #f7f8fa;
+  font: 600 14px/1.35 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  opacity: 1;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+
+#wa-sticker-plugin-overlay[aria-hidden="true"] {
+  opacity: 0;
+  transform: translate(-50%, calc(-50% + 8px));
+}
+
+#wa-sticker-plugin-overlay > span {
+  position: relative;
+  display: block;
+  flex: 0 0 26px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #635bff;
+  color: #ffffff;
+}
+
+#wa-sticker-plugin-overlay > span::before,
+#wa-sticker-plugin-overlay > span::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 12px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  content: "";
+  transform: translate(-50%, -50%);
+}
+
+#wa-sticker-plugin-overlay > span::after {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
+#wa-sticker-plugin-overlay[data-state="failed"] > span {
+  background: #f15c6d;
+  color: #210307;
+}
+
+#wa-sticker-plugin-overlay[data-state="opened"] > span {
+  background: #53bdeb;
+  color: #03141b;
+}
+
+@media (max-width: 760px) {
+  #wa-sticker-plugin-overlay {
+    left: 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #wa-sticker-plugin-overlay {
+    transition: none;
+  }
+}

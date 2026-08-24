@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sticker Drop Runtime Fixture</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="../../src/overlay.css">
+  <style>
+    body { margin: 0; background: #0b141a; color: #e9edef; font: 16px/1.5 system-ui, sans-serif; }
+    main { display: grid; min-height: 100vh; place-items: center; }
+    [data-testid="conversation-panel-wrapper"] { width: min(760px, calc(100% - 32px)); border: 1px solid #2a3942; background: #111b21; }
+    [data-testid="conversation-panel-body"] { min-height: 360px; padding: 28px; }
+    footer { display: flex; gap: 12px; padding: 18px; border-top: 1px solid #2a3942; }
+    [contenteditable="true"] { flex: 1; padding: 12px; border-radius: 8px; background: #202c33; }
+    button { padding: 10px 14px; border: 0; border-radius: 8px; background: #25d366; color: #07150d; font-weight: 700; cursor: pointer; }
+    #result { color: #aebac1; }
+  </style>
+  <script>
+    window.__fixtureEnabled = true;
+    window.__fixtureStorageListeners = [];
+    window.chrome = {
+      storage: {
+        local: {
+          get: async (defaults) => ({ ...defaults, enabled: window.__fixtureEnabled }),
+        },
+        onChanged: {
+          addListener: (listener) => window.__fixtureStorageListeners.push(listener),
+        },
+      },
+    };
+    window.__fixtureSetEnabled = (enabled) => {
+      const oldValue = window.__fixtureEnabled;
+      window.__fixtureEnabled = enabled;
+      for (const listener of window.__fixtureStorageListeners) {
+        listener({ enabled: { newValue: enabled, oldValue } }, "local");
+      }
+    };
+    window.__fixtureAttachFlow = null;
+    window.require = (name) => {
+      if (name === "WAWebEventFiles") {
+        return { getFiles: (event) => Promise.resolve(Array.from(event.dataTransfer.files)) };
+      }
+      if (name === "WAWebUim") {
+        return {
+          DismissReason: { UIM_INTERACTION: "UIM_INTERACTION" },
+          UIM: {
+            findMostRecentlyActiveDismissable: () => window.__fixtureAttachFlow,
+          },
+        };
+      }
+      throw new Error("Unknown fixture module");
+    };
+  </script>
+  <script src="../../src/drop-policy.js"></script>
+  <script src="../../src/main-world-bridge.js"></script>
+  <script src="../../src/content-script.js"></script>
+</head>
+<body>
+  <main>
+    <section data-testid="conversation-panel-wrapper">
+      <div data-testid="conversation-panel-body">
+        <h1>Runtime fixture</h1>
+        <p>Use the button to dispatch a generated PNG through the full drop handler.</p>
+        <button id="simulate" type="button">Simulate PNG drop</button>
+        <p id="result">Waiting</p>
+      </div>
+      <footer>
+        <input type="file" accept="image/*" hidden>
+        <div data-testid="conversation-compose-box-input" contenteditable="true" aria-label="Type a message"></div>
+      </footer>
+    </section>
+  </main>
+  <script>
+    const input = document.querySelector('input[type="file"]');
+    const target = document.querySelector('[data-testid="conversation-panel-body"]');
+
+    target.addEventListener("dragenter", () => {
+      window.__fixtureAttachFlow = {
+        displayName: "AttachMediaFlow",
+        requestDismiss: () => {
+          window.__fixtureAttachFlow = null;
+          document.body.dataset.dragFlowDismissed = "true";
+        },
+      };
+    });
+
+    input.addEventListener("change", () => {
+      const drawer = document.createElement("div");
+      drawer.dataset.testid = "drawer-middle";
+      const proof = document.createElement("button");
+      proof.dataset.testid = "media-editor-copy-button";
+      proof.textContent = "Editor proof";
+      drawer.appendChild(proof);
+      document.body.appendChild(drawer);
+      document.getElementById("result").textContent = `Sticker input received ${input.files.length} file`;
+    });
+
+    document.getElementById("simulate").addEventListener("click", () => {
+      const bytes = Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10]);
+      const file = new File([bytes], "fixture.png", { type: "image/png" });
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      target.dispatchEvent(new DragEvent("dragenter", { bubbles: true, dataTransfer: transfer }));
+      target.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: transfer }));
+    });
+  </script>
+</body>
+</html>
