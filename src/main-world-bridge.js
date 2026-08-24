@@ -29,6 +29,8 @@
   const policy = root[POLICY_KEY];
   let extensionEnabled = false;
   let dropInFlight = false;
+  let dragListenersAttached = false;
+  let controlRevision = 0;
   let currentStatus = "idle";
   let leaveTimer = 0;
 
@@ -349,6 +351,7 @@
 
     stopWhatsAppDrop(event);
     dropInFlight = true;
+    const startedAtRevision = controlRevision;
     emitStatus("processing");
 
     try {
@@ -358,6 +361,9 @@
       }
 
       const attachFlowClosed = await closeWhatsAppDragAttachFlow(uiDismissApi);
+      if (!extensionEnabled || startedAtRevision !== controlRevision) {
+        throw new Error("extension-disabled");
+      }
       const freshContext = attachFlowClosed ? findStickerContext() : null;
       if (!freshContext) {
         throw new Error("drag-attach-flow-still-open");
@@ -370,27 +376,45 @@
         editorOpened ? "" : "WhatsApp did not open the sticker editor.",
       );
     } catch {
-      emitStatus("failed", "Could not open the sticker editor. Use Create Sticker and retry.");
+      if (extensionEnabled && startedAtRevision === controlRevision) {
+        emitStatus("failed", "Could not open the sticker editor. Use Create Sticker and retry.");
+      } else {
+        emitStatus("idle");
+      }
     } finally {
       dropInFlight = false;
     }
   }
 
+  function setDragListenersAttached(shouldAttach) {
+    if (shouldAttach === dragListenersAttached) {
+      return;
+    }
+
+    const method = shouldAttach ? "addEventListener" : "removeEventListener";
+    root[method]("dragenter", previewEligibleDrop, true);
+    root[method]("dragover", previewEligibleDrop, true);
+    root[method]("dragleave", scheduleDragEnd, true);
+    root[method]("drop", handleDrop, true);
+    dragListenersAttached = shouldAttach;
+  }
+
   root.addEventListener(CONTROL_EVENT, (event) => {
     const enabled = event.detail?.enabled === true;
+    if (extensionEnabled !== enabled) {
+      controlRevision += 1;
+    }
     extensionEnabled = enabled;
+    setDragListenersAttached(enabled);
     if (!enabled) {
       clearTimeout(leaveTimer);
       emitStatus("idle");
     }
   });
 
-  root.addEventListener("dragenter", previewEligibleDrop, true);
-  root.addEventListener("dragover", previewEligibleDrop, true);
-  root.addEventListener("dragleave", scheduleDragEnd, true);
-  root.addEventListener("drop", handleDrop, true);
   root.addEventListener("pagehide", () => {
     clearTimeout(leaveTimer);
+    setDragListenersAttached(false);
     emitStatus("idle");
   });
   root.dispatchEvent(new CustomEvent(CONTROL_QUERY_EVENT));

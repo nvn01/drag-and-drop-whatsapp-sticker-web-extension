@@ -10,10 +10,10 @@ const expectedFiles = [
   "icons/active-16.png",
   "icons/active-32.png",
   "icons/active-48.png",
-  "icons/inactive-128.png",
-  "icons/inactive-16.png",
-  "icons/inactive-32.png",
-  "icons/inactive-48.png",
+  "icons/inactive-gray-x-128.png",
+  "icons/inactive-gray-x-16.png",
+  "icons/inactive-gray-x-32.png",
+  "icons/inactive-gray-x-48.png",
   "manifest.json",
   "src/content-script.js",
   "src/drop-policy.js",
@@ -42,14 +42,23 @@ if (JSON.stringify(actualFiles) !== JSON.stringify(expectedFiles)) {
 }
 
 const manifest = JSON.parse(await readFile(path.join(dist, "manifest.json"), "utf8"));
-if (JSON.stringify(manifest.permissions) !== JSON.stringify(["storage"])) {
-  throw new Error("The build may request only the storage permission");
+if (
+  JSON.stringify(manifest.permissions) !==
+  JSON.stringify(["activeTab", "scripting", "storage"])
+) {
+  throw new Error("The build may request only activeTab, scripting, and storage");
 }
 if (manifest.host_permissions) {
   throw new Error("The build must not request host permissions");
 }
 if (manifest.background?.service_worker !== "src/service-worker.js") {
   throw new Error("The toolbar toggle service worker is missing");
+}
+if (
+  manifest.content_security_policy?.extension_pages !==
+  "script-src 'self'; object-src 'self';"
+) {
+  throw new Error("The extension-page Content Security Policy is missing or too broad");
 }
 if (!manifest.action?.default_icon || !manifest.icons?.[128]) {
   throw new Error("The branded toolbar and extension icons are missing");
@@ -67,4 +76,11 @@ for (const forbidden of ["XMLHttpRequest", "fetch(", ".click(", "Send 1 selected
   }
 }
 
-console.log(`Build verified: ${actualFiles.length} files, WhatsApp-only, storage permission only`);
+const isolatedSource = await readFile(path.join(dist, "src/content-script.js"), "utf8");
+if (isolatedSource.includes("innerHTML")) {
+  throw new Error("Runtime UI must not construct DOM through innerHTML");
+}
+
+console.log(
+  `Build verified: ${actualFiles.length} files, WhatsApp-only, no broad host permissions`,
+);

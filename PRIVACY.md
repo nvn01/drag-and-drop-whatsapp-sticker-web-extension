@@ -1,20 +1,28 @@
 # Privacy Policy
 
-Effective date: August 23, 2026
+Effective date: August 24, 2026
 
-Drop as Sticker for WhatsApp Web is a local browser extension. It does not collect, sell, share, transmit, or retain personal data.
+Drop as Sticker for WhatsApp Web is a local browser extension. The developer does not collect, sell, share, transmit, or retain personal data through extension-owned systems.
 
 ## Data handling
 
-- Dropped images remain in the browser and are passed only into WhatsApp Web's existing sticker editor at the user's request.
+- The extension handles the one image that the user deliberately drops. That user-generated content remains in the browser and is passed only into WhatsApp Web's existing sticker editor to provide the extension's single purpose.
+- The developer does not receive the image, operate an image server, keep a copy, provide human access, or use it for analytics, advertising, profiling, or any unrelated purpose.
 - The extension does not read or store messages, contacts, chat names, browsing history, authentication data, cookies, or WhatsApp storage.
 - The extension does not operate analytics, telemetry, advertising, or an external server.
 - The extension stores one local boolean preference named `enabled` so the toolbar on/off choice persists. This value never leaves the browser through extension-owned code.
+
+## Limited Use
+
+The use of information received from Google APIs will adhere to the Chrome Web Store User Data Policy, including the Limited Use requirements.
+
+Any user data handled by the extension is used only to provide its disclosed single purpose. It is not transferred to the developer or to third parties for advertising, data brokerage, creditworthiness, lending, or other unrelated purposes. WhatsApp Web receives the user-selected image only because the user requests the native sticker-editor flow; WhatsApp's own terms and privacy practices apply to that service.
 
 ## Permissions
 
 - Site access is limited to `https://web.whatsapp.com/*` so the drop interaction can run in WhatsApp Web.
 - The `storage` permission is used only for the local on/off preference described above.
+- The `activeTab` and `scripting` permissions are used only after a toolbar click to synchronize that preference with the clicked WhatsApp Web tab, including after an extension update.
 
 ## Changes and contact
 

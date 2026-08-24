@@ -21,6 +21,7 @@ test("toolbar click persists and renders active and inactive states", async () =
   const listeners = { clicked: [], installed: [], startup: [], storage: [] };
   const state = {};
   const renders = { icons: [], titles: [] };
+  const injections = [];
   const chrome = {
     action: {
       onClicked: { addListener: (listener) => listeners.clicked.push(listener) },
@@ -28,8 +29,12 @@ test("toolbar click persists and renders active and inactive states", async () =
       setTitle: async (details) => renders.titles.push(details),
     },
     runtime: {
+      getURL: (relativePath) => `chrome-extension://test/${relativePath}`,
       onInstalled: { addListener: (listener) => listeners.installed.push(listener) },
       onStartup: { addListener: (listener) => listeners.startup.push(listener) },
+    },
+    scripting: {
+      executeScript: async (details) => injections.push(details),
     },
     storage: {
       local: {
@@ -52,21 +57,62 @@ test("toolbar click persists and renders active and inactive states", async () =
       onChanged: { addListener: (listener) => listeners.storage.push(listener) },
     },
   };
-
   const source = await readFile(path.join(root, "src/service-worker.js"), "utf8");
-  vm.runInNewContext(source, { chrome }, { filename: "service-worker.js" });
+  vm.runInNewContext(source, { chrome, URL }, { filename: "service-worker.js" });
 
   await waitFor(() => renders.titles.at(-1)?.title === "Drop as Sticker: on");
-  assert.equal(renders.icons.at(-1).path[16], "icons/active-16.png");
+  assert.equal(renders.icons.at(-1).path[16], "chrome-extension://test/icons/active-16.png");
 
   listeners.installed[0]();
   await waitFor(() => state.enabled === true);
 
-  listeners.clicked[0]();
+  listeners.clicked[0]({ id: 42, url: "https://web.whatsapp.com/" });
   await waitFor(() => state.enabled === false && renders.titles.at(-1)?.title === "Drop as Sticker: off");
-  assert.equal(renders.icons.at(-1).path[16], "icons/inactive-16.png");
+  assert.equal(
+    renders.icons.at(-1).path[16],
+    "chrome-extension://test/icons/inactive-gray-x-16.png",
+  );
+  await waitFor(() => injections.length === 1);
+  assert.equal(injections[0].target.tabId, 42);
+  assert.deepEqual(Array.from(injections[0].target.frameIds), [0]);
+  assert.equal(injections[0].world, "MAIN");
+  assert.deepEqual(Array.from(injections[0].args), ["wa-sticker-plugin:control:v1", false]);
 
-  listeners.clicked[0]();
+  listeners.clicked[0]({ id: 42, url: "https://web.whatsapp.com/" });
   await waitFor(() => state.enabled === true && renders.titles.at(-1)?.title === "Drop as Sticker: on");
-  assert.equal(renders.icons.at(-1).path[128], "icons/active-128.png");
+  assert.equal(renders.icons.at(-1).path[128], "chrome-extension://test/icons/active-128.png");
+  await waitFor(() => injections.length === 2);
+  assert.deepEqual(Array.from(injections[1].args), ["wa-sticker-plugin:control:v1", true]);
+});
+
+test("toolbar state is not injected into a non-WhatsApp tab", async () => {
+  const state = { enabled: true };
+  const injections = [];
+  let clicked;
+  const chrome = {
+    action: {
+      onClicked: { addListener: (listener) => (clicked = listener) },
+      setIcon: async () => {},
+      setTitle: async () => {},
+    },
+    runtime: {
+      getURL: (relativePath) => `chrome-extension://test/${relativePath}`,
+      onInstalled: { addListener: () => {} },
+      onStartup: { addListener: () => {} },
+    },
+    scripting: { executeScript: async (details) => injections.push(details) },
+    storage: {
+      local: {
+        get: async (defaults) => ({ ...defaults, ...state }),
+        set: async (update) => Object.assign(state, update),
+      },
+      onChanged: { addListener: () => {} },
+    },
+  };
+
+  const source = await readFile(path.join(root, "src/service-worker.js"), "utf8");
+  vm.runInNewContext(source, { chrome, URL }, { filename: "service-worker.js" });
+  clicked({ id: 7, url: "https://example.com/" });
+  await waitFor(() => state.enabled === false);
+  assert.equal(injections.length, 0);
 });

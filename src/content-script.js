@@ -58,7 +58,10 @@
     overlay.setAttribute("aria-live", "polite");
     overlay.setAttribute("aria-hidden", "true");
     overlay.dataset.state = "idle";
-    overlay.innerHTML = '<span aria-hidden="true"></span><strong></strong>';
+    const statusIcon = document.createElement("span");
+    statusIcon.setAttribute("aria-hidden", "true");
+    const statusText = document.createElement("strong");
+    overlay.append(statusIcon, statusText);
     document.body.appendChild(overlay);
     return overlay;
   }

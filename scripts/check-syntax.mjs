@@ -7,10 +7,13 @@ const files = [
   "src/drop-policy.js",
   "src/main-world-bridge.js",
   "src/content-script.js",
+  "src/service-worker.js",
   "scripts/build.mjs",
   "scripts/check-syntax.mjs",
   "scripts/verify-build.mjs",
   "tests/drop-policy.test.mjs",
+  "tests/main-world-control.test.mjs",
+  "tests/service-worker.test.mjs",
   "tests/static-contract.test.mjs",
 ];
 

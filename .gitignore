@@ -1,5 +1,6 @@
 dist/
 .artifacts/
+chrome-web-store-submission-*/
 node_modules/
 coverage/
 output logo/

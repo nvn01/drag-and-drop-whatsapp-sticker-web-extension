@@ -17,10 +17,12 @@ Unsupported, ambiguous, and multi-file drops are left to WhatsApp's normal behav
 ## Privacy and permissions
 
 - Runs only on `https://web.whatsapp.com/*`.
-- Requests only the `storage` permission to remember the on/off preference; it requests no broad host permissions.
+- Uses `storage` to remember the on/off preference. `activeTab` and `scripting` synchronize only the current WhatsApp tab when you click the toolbar icon, including after an extension update.
+- Requests no broad host permissions and cannot inject this synchronization into tabs you did not activate by clicking the icon.
 - Has no analytics, extension-owned network requests, or external server.
 - Does not inspect messages, contacts, authentication state, or browser history.
 - Does not persist dropped files or URLs.
+- Handles the deliberately dropped image only inside the browser for the stated sticker-editor purpose; the developer never receives it.
 
 The toolbar preference is the only value stored by the extension: `enabled: true` or `enabled: false`.
 
@@ -68,7 +70,7 @@ The same Manifest V3 package is intended for Chrome, Brave, Edge, and other Chro
 npm run release:chrome
 ```
 
-This runs every check, builds the exact runtime-only package, writes a versioned ZIP to `.artifacts/`, and prints its SHA-256 checksum. Tests, plans, source logo exports, and repository files are not included in the ZIP.
+This runs every check, builds the exact runtime-only package, writes a versioned ZIP plus a matching `.sha256` sidecar to `.artifacts/`, and prints the checksum. Tests, plans, source logo exports, and repository files are not included in the ZIP.
 
 Public-store copy, permission answers, review instructions, and the remaining account/assets checklist are in [`STORE_LISTING.md`](STORE_LISTING.md). The data-handling statement is in [`PRIVACY.md`](PRIVACY.md).
 

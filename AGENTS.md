@@ -8,7 +8,7 @@
 
 ## Current Status
 
-- Version 0.2.0 adds original branding and a persistent one-click active/inactive toolbar toggle.
+- Version 0.2.4 is the Chrome Web Store publication candidate with policy and supply-chain hardening.
 - Automated policy, build, packaging, fixture, and extension-world checks are available.
 - Live Brave inspection confirmed that WhatsApp's hidden image picker opens the sticker editor when its change handler receives a `File`.
 - The confirmed internal call uses `stickerMaker: true` and `sendAsSticker: true`.
@@ -31,7 +31,7 @@
 - Restrict execution to `https://web.whatsapp.com/*` and the top frame.
 - Start capture listeners at `document_start` so they run before WhatsApp's body-level React handlers.
 - Keep overlay/status UI isolated; keep capture, normalization, and hidden-input routing in one minimal MAIN-world bridge.
-- Keep the toolbar service worker limited to `chrome.action` and the boolean `storage.local` enabled preference.
+- Keep toolbar injection limited to the user-clicked WhatsApp tab via `activeTab` and `scripting`; store only the boolean `storage.local` preference.
 - Prefer the native hidden `input[type="file"][accept="image/*"]` sticker path over patching WhatsApp commands.
 - Use WhatsApp's existing dropped-image normalizer for URL/HTML image drags only when it preserves fail-open behavior.
 - Avoid broad host permissions, remote services, runtime-downloaded code, and unnecessary dependencies.
@@ -86,7 +86,7 @@ scripts/
 
 ## Release Rules
 
-- Use semantic versions; version 0.2.0 is the first branded public-release candidate.
+- Use semantic versions; version 0.2.4 is the current branded public-release candidate.
 - Release the same tested artifact; do not rebuild a different archive for publishing.
 - Do not publish to the Chrome Web Store, push to a remote, or create a release without explicit approval.
 - Document that the extension is unofficial, user-triggered, and not affiliated with WhatsApp or Meta.
