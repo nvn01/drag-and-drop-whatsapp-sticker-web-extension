@@ -1,6 +1,6 @@
 # Chrome Web Store Publication Guide
 
-Use this document to publish version 0.2.4 manually. Upload only the exact ZIP produced by `npm run release:chrome`. Do not upload `dist/`, the repository, a source ZIP from GitHub, or the `.sha256` file.
+Use this document to update the published item to version 0.2.7 manually. Upload only the exact ZIP produced by `npm run release:chrome`. Do not upload `dist/`, the repository, a source ZIP from GitHub, or the `.sha256` file.
 
 ## 1. Prepare the public source and privacy URL
 
@@ -12,7 +12,7 @@ Before opening the Developer Dashboard:
    git status
    git diff --check
    git add .github AGENTS.md PRIVACY.md README.md STORE_LISTING.md icons manifest.json package.json scripts src tests
-   git commit -m "chore: prepare Chrome Web Store release 0.2.4"
+   git commit -m "fix: bootstrap open WhatsApp tabs after installation"
    git push origin main
    ```
 
@@ -30,14 +30,14 @@ Run:
 
 ```powershell
 npm run release:chrome
-Get-FileHash .artifacts\whatsapp-sticker-plugin-0.2.4.zip -Algorithm SHA256
-Get-Content .artifacts\whatsapp-sticker-plugin-0.2.4.zip.sha256
+Get-FileHash .artifacts\whatsapp-sticker-plugin-0.2.7.zip -Algorithm SHA256
+Get-Content .artifacts\whatsapp-sticker-plugin-0.2.7.zip.sha256
 ```
 
 The two SHA-256 values must match. Keep both files unchanged after verification. Upload this file:
 
 ```text
-.artifacts/whatsapp-sticker-plugin-0.2.4.zip
+.artifacts/whatsapp-sticker-plugin-0.2.7.zip
 ```
 
 The passing GitHub workflow also uploads the inner ZIP and `.sha256` file as one workflow artifact. If you download that artifact, extract its outer wrapper, compare the inner ZIP checksum to your local value, and upload the inner extension ZIP—not the GitHub artifact wrapper.
@@ -55,13 +55,13 @@ In the [Chrome Developer Dashboard](https://chrome.google.com/webstore/devconsol
 
 Do not claim that Google, Chrome, WhatsApp, or Meta has certified or endorsed the extension.
 
-## 4. Create the item and upload the ZIP
+## 4. Update the existing item and upload the ZIP
 
-1. Return to **Items**.
-2. Click **Add new item**.
-3. Choose `.artifacts/whatsapp-sticker-plugin-0.2.4.zip`.
-4. Click **Upload**.
-5. In **Package**, confirm the parsed version is `0.2.4` and there are no manifest warnings.
+1. Open the existing **Drop as Sticker for WhatsApp Web** item.
+2. Open **Package**.
+3. Click **Upload new package** and choose `.artifacts/whatsapp-sticker-plugin-0.2.7.zip`.
+4. Complete the dashboard's pre-submission installation checks.
+5. Confirm the parsed version is `0.2.7` and there are no manifest warnings.
 6. If the dashboard rejects the package, fix the source, increment the manifest version, rebuild, and upload the new version. Never alter the verified ZIP manually.
 
 ## 5. Complete Store Listing
@@ -134,22 +134,16 @@ Route one image deliberately dropped by the user into WhatsApp Web's existing st
 Stores only one local boolean named enabled so the user's toolbar on/off choice persists. It is not synchronized to an extension-owned server.
 ```
 
-**Permission justification: activeTab**
-
-```text
-Temporarily accesses only the current tab after the user clicks the extension toolbar icon, so the enabled state can be synchronized immediately with that WhatsApp Web tab after an extension reload or update.
-```
-
 **Permission justification: scripting**
 
 ```text
-Injects a packaged, fixed boolean-state relay into the user-clicked WhatsApp Web tab. It does not inject arbitrary code, download code, or read messages, contacts, cookies, or authentication storage.
+Injects only the packaged extension runtime into an already-open WhatsApp Web tab after a fresh installation and a fixed boolean-state relay after a toolbar click. It does not inject arbitrary code, download code, or read messages, contacts, cookies, or authentication storage.
 ```
 
-**Website/content-script access justification**
+**Host permission and website/content-script access justification**
 
 ```text
-Runs only on https://web.whatsapp.com/* to detect the user's image drop and route that image into WhatsApp Web's existing sticker editor. The extension does not run on other sites.
+Runs only on https://web.whatsapp.com/* to detect the user's image drop, route that image into WhatsApp Web's existing sticker editor, and initialize an already-open WhatsApp Web tab immediately after a fresh installation. The extension does not run on or request access to other sites.
 ```
 
 **Remote code**
@@ -199,7 +193,7 @@ No extension account or credentials are required. The reviewer may use their own
 ```text
 1. Open https://web.whatsapp.com/ and sign in using your own test account.
 2. Open a self/test chat in which messages can be sent.
-3. Drag one PNG, JPEG, or WebP file over the active conversation. Confirm the extension's green drop affordance appears.
+3. If WhatsApp Web was already open when the extension was installed, do not refresh it. Drag one PNG, JPEG, or WebP file over the active conversation and confirm the extension's green drop affordance appears immediately.
 4. Drop the file. Confirm WhatsApp's native sticker editor opens. Sending is not required; close the editor without sending.
 5. Click the extension toolbar icon. Confirm the icon changes to the gray inactive version with an X.
 6. Drag another image. Confirm the extension does not intercept it and WhatsApp's normal media flow remains available. Close the preview without sending.
@@ -225,7 +219,7 @@ All visibility types undergo policy review. The private-first route adds a revie
 
 Before clicking **Submit for review**, confirm:
 
-- Package shows version `0.2.4`.
+- Package shows version `0.2.7`.
 - The public privacy-policy URL works in a signed-out window.
 - Store copy and privacy answers match.
 - Screenshot and promo tile contain no private data or misleading affiliation.

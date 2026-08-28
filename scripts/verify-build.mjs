@@ -44,12 +44,15 @@ if (JSON.stringify(actualFiles) !== JSON.stringify(expectedFiles)) {
 const manifest = JSON.parse(await readFile(path.join(dist, "manifest.json"), "utf8"));
 if (
   JSON.stringify(manifest.permissions) !==
-  JSON.stringify(["activeTab", "scripting", "storage"])
+  JSON.stringify(["scripting", "storage"])
 ) {
-  throw new Error("The build may request only activeTab, scripting, and storage");
+  throw new Error("The build may request only scripting and storage");
 }
-if (manifest.host_permissions) {
-  throw new Error("The build must not request host permissions");
+if (
+  JSON.stringify(manifest.host_permissions) !==
+  JSON.stringify(["https://web.whatsapp.com/*"])
+) {
+  throw new Error("The build must request only the exact WhatsApp Web host permission");
 }
 if (manifest.background?.service_worker !== "src/service-worker.js") {
   throw new Error("The toolbar toggle service worker is missing");

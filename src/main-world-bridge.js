@@ -493,6 +493,10 @@
     dragListenersAttached = shouldAttach;
   }
 
+  function requestCurrentControlState() {
+    root.dispatchEvent(new CustomEvent(CONTROL_QUERY_EVENT));
+  }
+
   root.addEventListener(CONTROL_EVENT, (event) => {
     const enabled = event.detail?.enabled === true;
     if (extensionEnabled !== enabled) {
@@ -508,8 +512,14 @@
 
   root.addEventListener("pagehide", () => {
     clearTimeout(leaveTimer);
+    if (extensionEnabled) {
+      controlRevision += 1;
+    }
+    extensionEnabled = false;
+    pendingConversationNavigation = null;
     setDragListenersAttached(false);
     emitStatus("idle");
   });
-  root.dispatchEvent(new CustomEvent(CONTROL_QUERY_EVENT));
+  root.addEventListener("pageshow", requestCurrentControlState);
+  requestCurrentControlState();
 })(globalThis);

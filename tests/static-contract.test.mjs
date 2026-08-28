@@ -9,9 +9,12 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 test("manifest is WhatsApp-only and permission-minimal", async () => {
   const manifest = JSON.parse(await readFile(path.join(root, "manifest.json"), "utf8"));
   assert.equal(manifest.manifest_version, 3);
-  assert.equal(manifest.version, "0.2.5");
-  assert.deepEqual(manifest.permissions, ["activeTab", "scripting", "storage"]);
-  assert.equal(manifest.host_permissions, undefined);
+  assert.equal(manifest.version, "0.2.7");
+  assert.deepEqual(manifest.permissions, ["scripting", "storage"]);
+  assert.deepEqual(manifest.host_permissions, ["https://web.whatsapp.com/*"]);
+  assert.equal(manifest.optional_host_permissions, undefined);
+  assert.equal(manifest.externally_connectable, undefined);
+  assert.equal(manifest.web_accessible_resources, undefined);
   assert.equal(manifest.background.service_worker, "src/service-worker.js");
   assert.equal(
     manifest.content_security_policy.extension_pages,
@@ -29,6 +32,8 @@ test("manifest is WhatsApp-only and permission-minimal", async () => {
   assert.equal(isolated.world, "ISOLATED");
   assert.equal(main.run_at, "document_start");
   assert.equal(isolated.run_at, "document_start");
+  assert.equal(main.all_frames, false);
+  assert.equal(isolated.all_frames, false);
 });
 
 test("runtime starts disabled until the isolated preference relay responds", async () => {
@@ -65,10 +70,13 @@ test("overlay plus uses centered geometry instead of a font glyph", async () => 
 
 test("runtime cannot auto-send or fetch through extension-owned networking", async () => {
   const main = await readFile(path.join(root, "src/main-world-bridge.js"), "utf8");
+  const serviceWorker = await readFile(path.join(root, "src/service-worker.js"), "utf8");
   assert.doesNotMatch(main, /\.click\s*\(/);
   assert.doesNotMatch(main, /Send 1 selected/);
   assert.doesNotMatch(main, /\bfetch\s*\(/);
   assert.doesNotMatch(main, /XMLHttpRequest/);
+  assert.doesNotMatch(serviceWorker, /\bfetch\s*\(/);
+  assert.doesNotMatch(serviceWorker, /XMLHttpRequest/);
   assert.match(main, /input\.dispatchEvent\(new Event\("change"/);
   assert.match(main, /WAWebUim/);
   assert.match(main, /AttachMediaFlow/);

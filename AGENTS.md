@@ -8,7 +8,8 @@
 
 ## Current Status
 
-- Version 0.2.5 fixes stale sticker-input routing while WhatsApp switches conversations.
+- Version 0.2.7 initializes already-open WhatsApp Web tabs immediately after a fresh installation; version 0.2.6 restored interception after page lifecycle resume.
+- Active and inactive icons now use the supplied mark on a clean rounded white tile; store graphics use matching light-theme assets.
 - Automated policy, build, packaging, fixture, and extension-world checks are available.
 - Live Brave inspection confirmed that WhatsApp's hidden image picker opens the sticker editor when its change handler receives a `File`.
 - The confirmed internal call uses `stickerMaker: true` and `sendAsSticker: true`.
@@ -31,7 +32,7 @@
 - Restrict execution to `https://web.whatsapp.com/*` and the top frame.
 - Start capture listeners at `document_start` so they run before WhatsApp's body-level React handlers.
 - Keep overlay/status UI isolated; keep capture, normalization, and hidden-input routing in one minimal MAIN-world bridge.
-- Keep toolbar injection limited to the user-clicked WhatsApp tab via `activeTab` and `scripting`; store only the boolean `storage.local` preference.
+- Keep host access limited to `https://web.whatsapp.com/*`; use it only for static content scripts, fresh-install bootstrap, and toolbar synchronization, and store only the boolean `storage.local` preference.
 - Prefer the native hidden `input[type="file"][accept="image/*"]` sticker path over patching WhatsApp commands.
 - Use WhatsApp's existing dropped-image normalizer for URL/HTML image drags only when it preserves fail-open behavior.
 - Avoid broad host permissions, remote services, runtime-downloaded code, and unnecessary dependencies.
@@ -86,7 +87,7 @@ scripts/
 
 ## Release Rules
 
-- Use semantic versions; version 0.2.5 is the current local public-release candidate.
+- Use semantic versions; version 0.2.7 is the current local public-release candidate.
 - Release the same tested artifact; do not rebuild a different archive for publishing.
 - Do not publish to the Chrome Web Store, push to a remote, or create a release without explicit approval.
 - Document that the extension is unofficial, user-triggered, and not affiliated with WhatsApp or Meta.

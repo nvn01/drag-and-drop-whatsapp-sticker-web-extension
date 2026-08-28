@@ -20,9 +20,9 @@ Any user data handled by the extension is used only to provide its disclosed sin
 
 ## Permissions
 
-- Site access is limited to `https://web.whatsapp.com/*` so the drop interaction can run in WhatsApp Web.
+- Site access is limited to `https://web.whatsapp.com/*` so the drop interaction can run in WhatsApp Web and an already-open WhatsApp Web tab can initialize immediately after installation.
 - The `storage` permission is used only for the local on/off preference described above.
-- The `activeTab` and `scripting` permissions are used only after a toolbar click to synchronize that preference with the clicked WhatsApp Web tab, including after an extension update.
+- The `scripting` permission is used only to inject the extension's packaged files into an already-open WhatsApp Web tab after a fresh installation and to synchronize the preference after a toolbar click. It is not used to download or execute remote code.
 
 ## Changes and contact
 

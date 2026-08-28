@@ -9,6 +9,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 test("inactive mode removes every capture listener and leaves drop untouched", async () => {
   const listeners = new Map();
+  let storedEnabled = true;
   class FixtureCustomEvent {
     constructor(type, options = {}) {
       this.type = type;
@@ -46,6 +47,14 @@ test("inactive mode removes every capture listener and leaves drop untouched", a
   const source = await readFile(path.join(root, "src/main-world-bridge.js"), "utf8");
   vm.runInContext(source, context, { filename: "main-world-bridge.js" });
 
+  context.addEventListener("wa-sticker-plugin:control-query:v1", () => {
+    context.dispatchEvent(
+      new FixtureCustomEvent("wa-sticker-plugin:control:v1", {
+        detail: { enabled: storedEnabled },
+      }),
+    );
+  });
+
   for (const type of ["dragenter", "dragover", "dragleave", "drop", "click"]) {
     assert.equal((listeners.get(type) || []).length, 0, `${type} starts detached`);
   }
@@ -57,11 +66,32 @@ test("inactive mode removes every capture listener and leaves drop untouched", a
     assert.equal((listeners.get(type) || []).length, 1, `${type} attaches when enabled`);
   }
 
+  context.dispatchEvent(new FixtureCustomEvent("pagehide"));
+  for (const type of ["dragenter", "dragover", "dragleave", "drop", "click"]) {
+    assert.equal((listeners.get(type) || []).length, 0, `${type} detaches on pagehide`);
+  }
+
+  context.dispatchEvent(new FixtureCustomEvent("pageshow"));
+  context.dispatchEvent(new FixtureCustomEvent("pageshow"));
+  for (const type of ["dragenter", "dragover", "dragleave", "drop", "click"]) {
+    assert.equal(
+      (listeners.get(type) || []).length,
+      1,
+      `${type} restores exactly once after pageshow`,
+    );
+  }
+
+  storedEnabled = false;
   context.dispatchEvent(
     new FixtureCustomEvent("wa-sticker-plugin:control:v1", { detail: { enabled: false } }),
   );
   for (const type of ["dragenter", "dragover", "dragleave", "drop", "click"]) {
     assert.equal((listeners.get(type) || []).length, 0, `${type} detaches when inactive`);
+  }
+
+  context.dispatchEvent(new FixtureCustomEvent("pageshow"));
+  for (const type of ["dragenter", "dragover", "dragleave", "drop", "click"]) {
+    assert.equal((listeners.get(type) || []).length, 0, `${type} stays detached after inactive resume`);
   }
 
   let nativeDrops = 0;
