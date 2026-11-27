@@ -1,6 +1,6 @@
 # Chrome Web Store Publication Guide
 
-Use this document to update the published item to version 0.2.7 manually. Upload only the exact ZIP produced by `npm run release:chrome`. Do not upload `dist/`, the repository, a source ZIP from GitHub, or the `.sha256` file.
+Use this document to update the published item to version 0.3.0 manually. Upload only the exact ZIP produced by `npm run release:chrome`. Do not upload `dist/`, the repository, a source ZIP from GitHub, or the `.sha256` file.
 
 ## 1. Prepare the public source and privacy URL
 
@@ -30,14 +30,14 @@ Run:
 
 ```powershell
 npm run release:chrome
-Get-FileHash .artifacts\whatsapp-sticker-plugin-0.2.7.zip -Algorithm SHA256
-Get-Content .artifacts\whatsapp-sticker-plugin-0.2.7.zip.sha256
+Get-FileHash .artifacts\whatsapp-sticker-plugin-0.3.0.zip -Algorithm SHA256
+Get-Content .artifacts\whatsapp-sticker-plugin-0.3.0.zip.sha256
 ```
 
 The two SHA-256 values must match. Keep both files unchanged after verification. Upload this file:
 
 ```text
-.artifacts/whatsapp-sticker-plugin-0.2.7.zip
+.artifacts/whatsapp-sticker-plugin-0.3.0.zip
 ```
 
 The passing GitHub workflow also uploads the inner ZIP and `.sha256` file as one workflow artifact. If you download that artifact, extract its outer wrapper, compare the inner ZIP checksum to your local value, and upload the inner extension ZIP—not the GitHub artifact wrapper.
@@ -59,9 +59,9 @@ Do not claim that Google, Chrome, WhatsApp, or Meta has certified or endorsed th
 
 1. Open the existing **Drop as Sticker for WhatsApp Web** item.
 2. Open **Package**.
-3. Click **Upload new package** and choose `.artifacts/whatsapp-sticker-plugin-0.2.7.zip`.
+3. Click **Upload new package** and choose `.artifacts/whatsapp-sticker-plugin-0.3.0.zip`.
 4. Complete the dashboard's pre-submission installation checks.
-5. Confirm the parsed version is `0.2.7` and there are no manifest warnings.
+5. Confirm the parsed version is `0.3.0` and there are no manifest warnings.
 6. If the dashboard rejects the package, fix the source, increment the manifest version, rebuild, and upload the new version. Never alter the verified ZIP manually.
 
 ## 5. Complete Store Listing
@@ -85,9 +85,9 @@ Drop one image into WhatsApp Web and open the native sticker editor instantly.
 ```text
 Create WhatsApp stickers with fewer clicks. Open a chat in WhatsApp Web, drag in one supported image, and Drop as Sticker opens WhatsApp's native sticker editor. Review or edit the sticker, then press Send yourself.
 
-Use the toolbar icon to turn the extension on or off at any time. When it is off, WhatsApp's normal drag-and-drop behavior is restored. Unsupported, ambiguous, and multi-file drops also retain WhatsApp's normal behavior.
+Open the toolbar settings to enable or disable sticker creation, paste imports and GIF/video conversion, or save optional pack and author metadata. When it is off, WhatsApp's normal drag-and-drop behavior is restored. Unsupported, ambiguous, and multi-file drops also retain WhatsApp's normal behavior.
 
-Privacy: the extension handles only the image you deliberately drop. It processes that image locally in your browser and passes it to WhatsApp Web's existing editor for this feature. The developer does not receive the image. There are no ads, analytics, telemetry, or extension-owned servers.
+Privacy: the extension handles only the file or direct link you deliberately drop or paste. It processes that image locally in your browser and passes it to WhatsApp Web's existing editor for this feature. The developer does not receive the image. There are no ads, analytics, telemetry, or extension-owned servers.
 
 This extension is unofficial and is not affiliated with, authorized by, or endorsed by WhatsApp or Meta. WhatsApp Web changes may temporarily affect compatibility.
 ```
@@ -125,19 +125,19 @@ The promo tile should use the original extension logo and a simple visual of an 
 **Single purpose**
 
 ```text
-Route one image deliberately dropped by the user into WhatsApp Web's existing sticker editor.
+Prepare one deliberately dropped or pasted media item and route it into WhatsApp Web's existing sticker editor.
 ```
 
 **Permission justification: storage**
 
 ```text
-Stores only one local boolean named enabled so the user's toolbar on/off choice persists. It is not synchronized to an extension-owned server.
+Stores the enabled, paste and motion switches plus optional pack name and author on the device. It is not synchronized to an extension-owned server.
 ```
 
 **Permission justification: scripting**
 
 ```text
-Injects only the packaged extension runtime into an already-open WhatsApp Web tab after a fresh installation and a fixed boolean-state relay after a toolbar click. It does not inject arbitrary code, download code, or read messages, contacts, cookies, or authentication storage.
+Injects only the packaged extension runtime into an already-open WhatsApp Web tab after a fresh installation. It does not inject arbitrary code, download code, or read messages, contacts, cookies, or authentication storage.
 ```
 
 **Host permission and website/content-script access justification**
@@ -160,10 +160,10 @@ All extension JavaScript is packaged in the uploaded ZIP. The extension does not
 
 Select:
 
-- **User-generated content** — the one image the user deliberately drops.
+- **User-generated content** — the media or link the user deliberately drops or pastes, and optional pack or author text supplied in settings.
 - **Website content** — only when the dropped image originates from a webpage and is normalized for the same user-requested sticker action.
 
-Do not select personal communications, authentication information, location, browsing history, financial information, health information, or personally identifiable information; the extension does not read those categories.
+Disclose the optional author field in the privacy questionnaire. Users can enter their own name.
 
 For data use, certify truthfully that:
 
@@ -195,9 +195,9 @@ No extension account or credentials are required. The reviewer may use their own
 2. Open a self/test chat in which messages can be sent.
 3. If WhatsApp Web was already open when the extension was installed, do not refresh it. Drag one PNG, JPEG, or WebP file over the active conversation and confirm the extension's green drop affordance appears immediately.
 4. Drop the file. Confirm WhatsApp's native sticker editor opens. Sending is not required; close the editor without sending.
-5. Click the extension toolbar icon. Confirm the icon changes to the gray inactive version with an X.
+5. Open the extension toolbar panel and switch off Enable extension. Confirm the icon changes to the gray inactive version with an X.
 6. Drag another image. Confirm the extension does not intercept it and WhatsApp's normal media flow remains available. Close the preview without sending.
-7. Click the toolbar icon again to restore sticker mode.
+7. Use Enable extension in the toolbar panel to restore sticker mode.
 
 The extension contains no account system, payment, remote service, analytics, or auto-send function. All executable extension code is in the submitted package. The extension is unofficial and interoperates with WhatsApp Web's existing page-loaded editor; it does not modify WhatsApp authentication data.
 ```
@@ -219,7 +219,7 @@ All visibility types undergo policy review. The private-first route adds a revie
 
 Before clicking **Submit for review**, confirm:
 
-- Package shows version `0.2.7`.
+- Package shows version `0.3.0`.
 - The public privacy-policy URL works in a signed-out window.
 - Store copy and privacy answers match.
 - Screenshot and promo tile contain no private data or misleading affiliation.

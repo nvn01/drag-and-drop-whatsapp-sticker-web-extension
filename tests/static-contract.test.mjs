@@ -9,7 +9,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 test("manifest is WhatsApp-only and permission-minimal", async () => {
   const manifest = JSON.parse(await readFile(path.join(root, "manifest.json"), "utf8"));
   assert.equal(manifest.manifest_version, 3);
-  assert.equal(manifest.version, "0.2.7");
+  assert.equal(manifest.version, "0.3.0");
   assert.deepEqual(manifest.permissions, ["scripting", "storage"]);
   assert.deepEqual(manifest.host_permissions, ["https://web.whatsapp.com/*"]);
   assert.equal(manifest.optional_host_permissions, undefined);
@@ -20,6 +20,7 @@ test("manifest is WhatsApp-only and permission-minimal", async () => {
     manifest.content_security_policy.extension_pages,
     "script-src 'self'; object-src 'self';",
   );
+  assert.equal(manifest.action.default_popup, "options/index.html");
   assert.equal(manifest.action.default_title, "Drop as Sticker: on");
   assert.equal(manifest.icons[128], "icons/active-128.png");
   assert.equal(manifest.action.default_icon[16], "icons/active-16.png");

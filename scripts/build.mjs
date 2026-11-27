@@ -14,13 +14,17 @@ const sourceFiles = [
   "icons/inactive-gray-x-32.png",
   "icons/inactive-gray-x-48.png",
   "icons/inactive-gray-x-128.png",
+  "options/index.html",
+  "options/options.css",
+  "options/options.js",
   "src/content-script.js",
   "src/drop-policy.js",
   "src/main-world-bridge.js",
   "src/overlay.css",
   "src/service-worker.js",
+  "src/sticker-media.js",
 ];
-const canonicalTextExtensions = new Set([".css", ".js", ".json"]);
+const canonicalTextExtensions = new Set([".css", ".html", ".js", ".json"]);
 
 if (path.dirname(dist) !== root || path.basename(dist) !== "dist") {
   throw new Error("Refusing to build outside the project dist directory");

@@ -15,11 +15,15 @@ const expectedFiles = [
   "icons/inactive-gray-x-32.png",
   "icons/inactive-gray-x-48.png",
   "manifest.json",
+  "options/index.html",
+  "options/options.css",
+  "options/options.js",
   "src/content-script.js",
   "src/drop-policy.js",
   "src/main-world-bridge.js",
   "src/overlay.css",
   "src/service-worker.js",
+  "src/sticker-media.js",
 ];
 
 async function listFiles(directory, prefix = "") {
@@ -84,7 +88,7 @@ if (isolatedSource.includes("innerHTML")) {
   throw new Error("Runtime UI must not construct DOM through innerHTML");
 }
 
-for (const relativePath of actualFiles.filter((file) => /\.(?:css|js|json)$/.test(file))) {
+for (const relativePath of actualFiles.filter((file) => /\.(?:css|html|js|json)$/.test(file))) {
   const contents = await readFile(path.join(dist, relativePath), "utf8");
   if (contents.includes("\r")) {
     throw new Error(`Build text file is not canonical LF: ${relativePath}`);

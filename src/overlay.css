@@ -77,3 +77,13 @@
     transition: none;
   }
 }
+
+#wa-sticker-plugin-overlay[data-state="failed"] {
+  background: #701e2b;
+  border-color: #ff8796;
+  color: white;
+}
+
+#wa-sticker-plugin-overlay[data-state="failed"] > span {
+  transform: rotate(45deg);
+}

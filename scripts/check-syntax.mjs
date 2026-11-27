@@ -6,8 +6,10 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const files = [
   "src/drop-policy.js",
   "src/main-world-bridge.js",
+  "options/options.js",
   "src/content-script.js",
   "src/service-worker.js",
+  "src/sticker-media.js",
   "scripts/build.mjs",
   "scripts/check-syntax.mjs",
   "scripts/verify-build.mjs",
@@ -15,6 +17,7 @@ const files = [
   "tests/main-world-control.test.mjs",
   "tests/service-worker.test.mjs",
   "tests/static-contract.test.mjs",
+  "tests/sticker-media.test.mjs",
 ];
 
 for (const relativePath of files) {

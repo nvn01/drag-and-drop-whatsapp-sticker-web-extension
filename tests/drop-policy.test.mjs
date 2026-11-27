@@ -18,8 +18,8 @@ function decision(snapshot, phase = "drop") {
   return policy.classifyTransfer(snapshot, phase);
 }
 
-test("accepts supported local raster images", () => {
-  for (const type of ["image/jpeg", "image/png", "image/webp"]) {
+test("accepts supported image and video inputs", () => {
+  for (const type of ["image/jpeg", "image/png", "image/webp", "image/gif", "video/mp4", "video/webm"]) {
     const result = decision({ files: [{ name: "meme", size: 1024, type }] });
     assert.equal(result.eligible, true);
     assert.equal(result.kind, "local-image");
@@ -33,9 +33,9 @@ test("uses a supported extension when a local MIME type is empty", () => {
   );
 });
 
-test("rejects GIF, SVG, non-image, oversized, and multiple-file drops", () => {
+test("rejects SVG, non-image, oversized, and multiple-file drops", () => {
   const rejected = [
-    [{ name: "meme.gif", size: 1024, type: "image/gif" }],
+    [{ name: "movie.mov", size: 1024, type: "video/quicktime" }],
     [{ name: "meme.svg", size: 1024, type: "image/svg+xml" }],
     [{ name: "notes.txt", size: 10, type: "text/plain" }],
     [{ name: "large.png", size: policy.MAX_IMAGE_BYTES + 1, type: "image/png" }],
@@ -80,4 +80,28 @@ test("keeps ambiguous and empty transfers on the passthrough path", () => {
     assert.equal(result.eligible, false);
     assert.equal(result.kind, "passthrough");
   }
+});
+
+test("only a single direct HTTPS media URL qualifies for composer paste", () => {
+  for (const ext of ["PNG", "webp", "gif", "mp4", "webm"]) {
+    const url = "https://cdn.example/a." + ext + "?size=2";
+    assert.equal(policy.directPasteUrl(" " + url + " "), url);
+  }
+  for (const value of ["hello", "https://example.com/page", "http://x.test/a.png",
+    "https://x.test/a.png\nhttps://x.test/b.gif", "https://name:pw@x.test/a.gif",
+    "see https://x.test/a.png", "file:///tmp/a.gif"]) {
+    assert.equal(policy.directPasteUrl(value), null);
+  }
+});
+
+test("disabling motion leaves animated source files to WhatsApp", () => {
+  for (const file of [
+    { name: "clip", type: "video/mp4" },
+    { name: "clip.webm", type: "" },
+    { name: "loop.GIF", type: "" },
+  ]) {
+    assert.equal(policy.classifyTransfer({ files: [file] }, "drop", false).eligible, false);
+    assert.equal(policy.classifyTransfer({ fileItems: [file] }, "preview", false).eligible, false);
+  }
+  assert.equal(policy.acceptsInput({ name: "photo.jpg" }, false), true);
 });

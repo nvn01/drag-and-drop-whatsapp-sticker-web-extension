@@ -6,25 +6,17 @@ The extension does not send automatically. After dropping an image, review it in
 
 ## What it does
 
-1. Detects one eligible image dropped into an active WhatsApp Web chat.
-2. Lets WhatsApp normalize local files and browser-page image drags.
-3. Routes the resulting `File` through WhatsApp's hidden Create Sticker input.
-4. Opens the native sticker editor without opening File Explorer.
-5. Lets you turn interception on or off by clicking the extension toolbar icon.
+Drop one PNG, JPEG, WebP, GIF, MP4, or WebM into an open chat, or paste a supported file into the message composer. To use a copied image address, paste the direct HTTPS URL on its own. Its path must end in a supported file extension. Links to articles and GIF search pages paste as ordinary text. WhatsApp resolves media links, so the source must allow WhatsApp to read the file. If a site blocks the link, copy or download the file and paste or drop that instead.
 
-Unsupported, ambiguous, and multi-file drops are left to WhatsApp's normal behavior.
+Click the extension icon to open settings. **Enable extension**, **Paste to create**, and **Animated stickers** apply immediately. To embed optional pack and author information in the input WebP, enter the values and click **Save attribution**. Save both fields empty to clear them.
+
+GIFs up to 10 seconds and 200 frames and MP4/WebM clips up to 4 seconds convert locally to silent, looping 512 × 512 WebP. Conversion samples motion at up to about 10 frames per second. The source limit is 16 MiB and the converted animation limit is 500 KiB. A red notification reports an import or editor failure. Normal text and multiple files use the ordinary chat flow.
+
+WhatsApp controls the final sticker. Check the native editor preview for motion. The editor can re-encode the input and discard its embedded pack or author. The public pack format documents animated WebP and pack-level publisher metadata. We could not verify a public Web editor API for attaching sound. [WhatsApp sticker format and pack fields](https://github.com/WhatsApp/stickers/blob/main/Android/README.md)
 
 ## Privacy and permissions
 
-- Runs only on `https://web.whatsapp.com/*`.
-- Uses `storage` to remember the on/off preference. `activeTab` and `scripting` synchronize only the current WhatsApp tab when you click the toolbar icon, including after an extension update.
-- Requests no broad host permissions and cannot inject this synchronization into tabs you did not activate by clicking the icon.
-- Has no analytics, extension-owned network requests, or external server.
-- Does not inspect messages, contacts, authentication state, or browser history.
-- Does not persist dropped files or URLs.
-- Handles the deliberately dropped image only inside the browser for the stated sticker-editor purpose; the developer never receives it.
-
-The toolbar preference is the only value stored by the extension: `enabled: true` or `enabled: false`.
+The runtime runs on WhatsApp Web. The extension stores settings locally, including any pack name and author you choose to share with WhatsApp. Clipboard handling occurs on a paste into the active chat composer. Direct links use WhatsApp's existing media normalizer. The extension has no clipboard-read permission, broad host access, developer-operated server, or analytics. The scripting permission initializes already-open WhatsApp tabs after installation.
 
 ## Build and verify
 
@@ -44,7 +36,7 @@ The reproducible unpacked extension is written to `dist/`.
 4. Select this project's `dist` directory.
 5. Reload an existing WhatsApp Web tab once after installation.
 
-Click the toolbar icon at any time to switch between active and inactive mode. The inactive icon includes an **X**, and WhatsApp's normal drag-and-drop behavior is restored without reloading the page.
+Open the toolbar panel and use **Enable extension** to switch modes. The inactive icon includes an **X**, and WhatsApp's normal drag-and-drop behavior is restored without reloading the page.
 
 After rebuilding an already-loaded copy, click **Reload** on the extension card in
 `chrome://extensions` or `brave://extensions`, then reload WhatsApp Web. Chromium
