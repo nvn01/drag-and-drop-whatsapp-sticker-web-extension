@@ -44,6 +44,7 @@ test("inactive mode removes every capture listener and leaves drop untouched", a
     'globalThis[Symbol.for("wa-sticker-plugin/drop-policy/v1")] = Object.freeze({});',
     context,
   );
+  vm.runInContext(await readFile(path.join(root, "src/sticker-media.js"), "utf8"), context);
   const source = await readFile(path.join(root, "src/main-world-bridge.js"), "utf8");
   vm.runInContext(source, context, { filename: "main-world-bridge.js" });
 
@@ -55,25 +56,25 @@ test("inactive mode removes every capture listener and leaves drop untouched", a
     );
   });
 
-  for (const type of ["dragenter", "dragover", "dragleave", "drop", "click"]) {
+  for (const type of ["dragenter", "dragover", "dragleave", "dragend", "drop", "paste", "click"]) {
     assert.equal((listeners.get(type) || []).length, 0, `${type} starts detached`);
   }
 
   context.dispatchEvent(
     new FixtureCustomEvent("wa-sticker-plugin:control:v1", { detail: { enabled: true } }),
   );
-  for (const type of ["dragenter", "dragover", "dragleave", "drop", "click"]) {
+  for (const type of ["dragenter", "dragover", "dragleave", "dragend", "drop", "paste", "click"]) {
     assert.equal((listeners.get(type) || []).length, 1, `${type} attaches when enabled`);
   }
 
   context.dispatchEvent(new FixtureCustomEvent("pagehide"));
-  for (const type of ["dragenter", "dragover", "dragleave", "drop", "click"]) {
+  for (const type of ["dragenter", "dragover", "dragleave", "dragend", "drop", "paste", "click"]) {
     assert.equal((listeners.get(type) || []).length, 0, `${type} detaches on pagehide`);
   }
 
   context.dispatchEvent(new FixtureCustomEvent("pageshow"));
   context.dispatchEvent(new FixtureCustomEvent("pageshow"));
-  for (const type of ["dragenter", "dragover", "dragleave", "drop", "click"]) {
+  for (const type of ["dragenter", "dragover", "dragleave", "dragend", "drop", "paste", "click"]) {
     assert.equal(
       (listeners.get(type) || []).length,
       1,
@@ -85,12 +86,12 @@ test("inactive mode removes every capture listener and leaves drop untouched", a
   context.dispatchEvent(
     new FixtureCustomEvent("wa-sticker-plugin:control:v1", { detail: { enabled: false } }),
   );
-  for (const type of ["dragenter", "dragover", "dragleave", "drop", "click"]) {
+  for (const type of ["dragenter", "dragover", "dragleave", "dragend", "drop", "paste", "click"]) {
     assert.equal((listeners.get(type) || []).length, 0, `${type} detaches when inactive`);
   }
 
   context.dispatchEvent(new FixtureCustomEvent("pageshow"));
-  for (const type of ["dragenter", "dragover", "dragleave", "drop", "click"]) {
+  for (const type of ["dragenter", "dragover", "dragleave", "dragend", "drop", "paste", "click"]) {
     assert.equal((listeners.get(type) || []).length, 0, `${type} stays detached after inactive resume`);
   }
 
@@ -236,6 +237,7 @@ test("a drop begun during chat navigation waits for the replacement sticker inpu
 
   const context = vm.createContext({
     CustomEvent: FixtureCustomEvent,
+    AbortController,
     DataTransfer: FixtureDataTransfer,
     Element: FixtureElement,
     Event: FixtureEvent,
@@ -278,10 +280,11 @@ test("a drop begun during chat navigation waits for the replacement sticker inpu
   vm.runInContext(
     `globalThis[Symbol.for("wa-sticker-plugin/drop-policy/v1")] = Object.freeze({
       classifyTransfer: () => ({ eligible: true, kind: "local-image" }),
-      isSupportedImageMetadata: () => true,
+      acceptsInput: () => true,
     });`,
     context,
   );
+  vm.runInContext(await readFile(path.join(root, "src/sticker-media.js"), "utf8"), context);
   const source = await readFile(path.join(root, "src/main-world-bridge.js"), "utf8");
   vm.runInContext(source, context, { filename: "main-world-bridge.js" });
 
@@ -329,4 +332,18 @@ test("a drop begun during chat navigation waits for the replacement sticker inpu
   await new Promise((resolve) => setTimeout(resolve, 10));
   assert.equal(ambiguousDrop.defaultPrevented, false, "missing attach flow fails open");
   assert.equal(newChanges, 1, "ambiguous UI state never reaches the sticker input");
+  assert.equal(statuses.at(-1).state, "failed");
+  context.dispatchEvent(new FixtureEvent("dragleave"));
+  await new Promise(resolve => setTimeout(resolve, 375));
+  assert.equal(statuses.at(-1).state, "failed", "drag cleanup preserves the failure notice");
+
+  newContext.composer.contains = target => target === newContext.composer;
+  const paste = new FixtureEvent("paste", { target: newContext.composer });
+  paste.isTrusted = true;
+  paste.clipboardData = transfer;
+  context.dispatchEvent(paste);
+  await new Promise(resolve => setTimeout(resolve, 10));
+  assert.equal(paste.defaultPrevented, true);
+  assert.equal(newChanges, 2);
+  assert.equal(statuses.at(-1).state, "opened");
 });

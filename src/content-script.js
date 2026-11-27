@@ -29,11 +29,14 @@
   let hideTimer = 0;
   let pendingState = { message: "", state: "idle" };
   let extensionEnabled = false;
+  let paste = true;
+  let motion = true;
+  let attribution = { pack: "", author: "" };
 
   function dispatchControl() {
     root.dispatchEvent(
       new CustomEvent(CONTROL_EVENT, {
-        detail: Object.freeze({ enabled: extensionEnabled }),
+        detail: Object.freeze({ enabled: extensionEnabled, paste, motion, attribution }),
       }),
     );
   }
@@ -80,7 +83,7 @@
     overlay.setAttribute("aria-hidden", String(hidden));
 
     if (state === "opened" || state === "failed") {
-      hideTimer = setTimeout(() => renderStatus("idle", ""), state === "opened" ? 1200 : 2800);
+      hideTimer = setTimeout(() => renderStatus("idle", ""), state === "opened" ? 1500 : 4500);
     }
   }
 
@@ -97,14 +100,21 @@
   root.addEventListener(CONTROL_QUERY_EVENT, dispatchControl);
 
   chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName === "local" && typeof changes.enabled?.newValue === "boolean") {
-      setExtensionEnabled(changes.enabled.newValue);
-    }
+    if (areaName !== "local") return;
+    if (changes.paste) paste = changes.paste.newValue !== false;
+    if (changes.motion) motion = changes.motion.newValue !== false;
+    if (changes.attribution) attribution = changes.attribution.newValue || {};
+    setExtensionEnabled(changes.enabled ? changes.enabled.newValue !== false : extensionEnabled);
   });
 
   void chrome.storage.local
-    .get({ enabled: true })
-    .then((settings) => setExtensionEnabled(settings.enabled !== false))
+    .get({ enabled: true, paste: true, motion: true, attribution })
+    .then((settings) => {
+      paste = settings.paste !== false;
+      motion = settings.motion !== false;
+      attribution = settings.attribution;
+      setExtensionEnabled(settings.enabled !== false);
+    })
     .catch(() => setExtensionEnabled(false));
 
   if (document.body) {

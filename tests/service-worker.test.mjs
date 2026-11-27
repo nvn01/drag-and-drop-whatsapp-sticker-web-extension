@@ -17,7 +17,7 @@ async function waitFor(predicate) {
   throw new Error("Timed out waiting for service-worker state");
 }
 
-test("toolbar click persists and renders active and inactive states", async () => {
+test("saved settings update the active and inactive toolbar icon", async () => {
   const listeners = { clicked: [], installed: [], startup: [], storage: [] };
   const state = {};
   const renders = { icons: [], titles: [] };
@@ -66,23 +66,16 @@ test("toolbar click persists and renders active and inactive states", async () =
   listeners.installed[0]({ reason: "update" });
   await waitFor(() => state.enabled === true);
 
-  listeners.clicked[0]({ id: 42, url: "https://web.whatsapp.com/" });
+  await chrome.storage.local.set({ enabled: false });
   await waitFor(() => state.enabled === false && renders.titles.at(-1)?.title === "Drop as Sticker: off");
   assert.equal(
     renders.icons.at(-1).path[16],
     "chrome-extension://test/icons/inactive-gray-x-16.png",
   );
-  await waitFor(() => injections.length === 1);
-  assert.equal(injections[0].target.tabId, 42);
-  assert.deepEqual(Array.from(injections[0].target.frameIds), [0]);
-  assert.equal(injections[0].world, "MAIN");
-  assert.deepEqual(Array.from(injections[0].args), ["wa-sticker-plugin:control:v1", false]);
-
-  listeners.clicked[0]({ id: 42, url: "https://web.whatsapp.com/" });
+  await chrome.storage.local.set({ enabled: true });
   await waitFor(() => state.enabled === true && renders.titles.at(-1)?.title === "Drop as Sticker: on");
   assert.equal(renders.icons.at(-1).path[128], "chrome-extension://test/icons/active-128.png");
-  await waitFor(() => injections.length === 2);
-  assert.deepEqual(Array.from(injections[1].args), ["wa-sticker-plugin:control:v1", true]);
+  assert.equal(injections.length, 0);
 });
 
 test("fresh install bootstraps already-open WhatsApp tabs without a reload", async () => {
@@ -150,6 +143,7 @@ test("fresh install bootstraps already-open WhatsApp tabs without a reload", asy
     assert.equal(scripts[0].world, "MAIN");
     assert.deepEqual(Array.from(scripts[0].files), [
       "src/drop-policy.js",
+      "src/sticker-media.js",
       "src/main-world-bridge.js",
     ]);
     assert.equal(scripts[1].world, "ISOLATED");
@@ -164,50 +158,4 @@ test("fresh install bootstraps already-open WhatsApp tabs without a reload", asy
   assert.equal(queries.length, 1, "extension updates must not duplicate the fresh-install bootstrap");
   assert.equal(styleInjections.length, 2);
   assert.equal(scriptInjections.length, 4);
-});
-
-test("toolbar state is never injected outside the exact WhatsApp Web origin", async () => {
-  const state = { enabled: true };
-  const injections = [];
-  let clicked;
-  const chrome = {
-    action: {
-      onClicked: { addListener: (listener) => (clicked = listener) },
-      setIcon: async () => {},
-      setTitle: async () => {},
-    },
-    runtime: {
-      getURL: (relativePath) => `chrome-extension://test/${relativePath}`,
-      onInstalled: { addListener: () => {} },
-      onStartup: { addListener: () => {} },
-    },
-    scripting: { executeScript: async (details) => injections.push(details) },
-    storage: {
-      local: {
-        get: async (defaults) => ({ ...defaults, ...state }),
-        set: async (update) => Object.assign(state, update),
-      },
-      onChanged: { addListener: () => {} },
-    },
-  };
-
-  const source = await readFile(path.join(root, "src/service-worker.js"), "utf8");
-  vm.runInNewContext(source, { chrome, URL }, { filename: "service-worker.js" });
-  const unrelatedTabs = [
-    { id: 7, url: "https://example.com/" },
-    { id: 8, url: "https://web.whatsapp.com.evil.example/" },
-    { id: 9, url: "http://web.whatsapp.com/" },
-    { id: 10, url: "https://whatsapp.com/" },
-    { id: 11, url: "https://web.whatsapp.com:444/" },
-    { id: 12, url: "chrome://extensions/" },
-    { id: 13, url: "not a valid URL" },
-    { id: 14 },
-  ];
-
-  for (const [index, tab] of unrelatedTabs.entries()) {
-    const expectedEnabled = index % 2 === 1;
-    clicked(tab);
-    await waitFor(() => state.enabled === expectedEnabled);
-    assert.equal(injections.length, 0, `unexpected injection for ${tab.url || "missing URL"}`);
-  }
 });

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Drop as Sticker for WhatsApp Web",
-  "version": "0.2.7",
+  "version": "0.3.0",
   "description": "Drop one image into an open WhatsApp Web chat to open the native sticker editor.",
   "permissions": ["scripting", "storage"],
   "host_permissions": ["https://web.whatsapp.com/*"],
@@ -11,7 +11,9 @@
     "48": "icons/active-48.png",
     "128": "icons/active-128.png"
   },
+  "options_ui": { "page": "options/index.html", "open_in_tab": true },
   "action": {
+    "default_popup": "options/index.html",
     "default_title": "Drop as Sticker: on",
     "default_icon": {
       "16": "icons/active-16.png",
@@ -29,7 +31,7 @@
   "content_scripts": [
     {
       "matches": ["https://web.whatsapp.com/*"],
-      "js": ["src/drop-policy.js", "src/main-world-bridge.js"],
+      "js": ["src/drop-policy.js", "src/sticker-media.js", "src/main-world-bridge.js"],
       "run_at": "document_start",
       "all_frames": false,
       "world": "MAIN"

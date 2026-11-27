@@ -1,16 +1,16 @@
 # Privacy Policy
 
-Effective date: August 24, 2026
+Effective date: November 27, 2026
 
 Drop as Sticker for WhatsApp Web is a local browser extension. The developer does not collect, sell, share, transmit, or retain personal data through extension-owned systems.
 
 ## Data handling
 
-- The extension handles the one image that the user deliberately drops. That user-generated content remains in the browser and is passed only into WhatsApp Web's existing sticker editor to provide the extension's single purpose.
+- The extension handles one media file or direct link that the user deliberately drops or pastes into WhatsApp. WhatsApp’s existing file normalizer can request the linked resource from its host. The extension processes image and video bytes locally and passes the prepared image to WhatsApp’s sticker editor.
 - The developer does not receive the image, operate an image server, keep a copy, provide human access, or use it for analytics, advertising, profiling, or any unrelated purpose.
 - The extension does not read or store messages, contacts, chat names, browsing history, authentication data, cookies, or WhatsApp storage.
 - The extension does not operate analytics, telemetry, advertising, or an external server.
-- The extension stores one local boolean preference named `enabled` so the toolbar on/off choice persists. This value never leaves the browser through extension-owned code.
+- The extension stores the enabled, paste and animation switches and any optional pack name and author in local extension storage. It makes these settings available to its WhatsApp Web adapter and embeds the chosen attribution in prepared WebP files. Clear both attribution fields and save to remove the stored names.
 
 ## Limited Use
 
@@ -21,8 +21,8 @@ Any user data handled by the extension is used only to provide its disclosed sin
 ## Permissions
 
 - Site access is limited to `https://web.whatsapp.com/*` so the drop interaction can run in WhatsApp Web and an already-open WhatsApp Web tab can initialize immediately after installation.
-- The `storage` permission is used only for the local on/off preference described above.
-- The `scripting` permission is used only to inject the extension's packaged files into an already-open WhatsApp Web tab after a fresh installation and to synchronize the preference after a toolbar click. It is not used to download or execute remote code.
+- The `storage` permission is used only for the local settings described above.
+- The `scripting` permission is used only to inject the extension's packaged files into an already-open WhatsApp Web tab after a fresh installation. It is not used to download or execute remote code.
 
 ## Changes and contact
 

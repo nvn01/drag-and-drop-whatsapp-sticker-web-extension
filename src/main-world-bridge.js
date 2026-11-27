@@ -33,6 +33,10 @@
   const policy = root[POLICY_KEY];
   let extensionEnabled = false;
   let dropInFlight = false;
+  let settings = { pack: "", author: "" };
+  let activeOperation = null;
+  let pasteEnabled = true;
+  let motionEnabled = true;
   let dragListenersAttached = false;
   let controlRevision = 0;
   let currentStatus = "idle";
@@ -129,6 +133,7 @@
       return;
     }
 
+    activeOperation?.abort();
     conversationNavigationRevision += 1;
     pendingConversationNavigation = {
       previousContext: findStickerContext(),
@@ -201,7 +206,7 @@
       const parsed = new DOMParser().parseFromString(html, "text/html");
       const images = Array.from(parsed.images).filter((image) => image.src);
       const visibleText = String(parsed.body?.textContent || "").trim();
-      return images.length > 0 && visibleText === "";
+      return images.length === 1 && visibleText === "";
     } catch {
       return false;
     }
@@ -270,7 +275,7 @@
 
   function getActiveDragAttachFlow(uiDismissApi) {
     try {
-      const flow = uiDismissApi.findDismissable();
+      const flow = uiDismissApi?.findDismissable();
       return flow?.displayName === DRAG_ATTACH_FLOW_NAME ? flow : null;
     } catch {
       return null;
@@ -283,7 +288,7 @@
 
       function check() {
         if (!getActiveDragAttachFlow(uiDismissApi)) {
-          requestAnimationFrame(() => resolve(true));
+          setTimeout(() => resolve(true), 0);
           return;
         }
 
@@ -358,7 +363,7 @@
       throw new Error("normalizer-unavailable");
     }
 
-    return normalize(event, ["^image/"]);
+    return normalize(event, ["^image/", "^video/"]);
   }
 
   function routeFileToStickerInput(input, file) {
@@ -376,119 +381,158 @@
 
   function previewEligibleDrop(event) {
     clearTimeout(leaveTimer);
-    if (!extensionEnabled || dropInFlight || !findStickerContext()) {
+    if (!extensionEnabled || dropInFlight) return;
+    const decision = policy.classifyTransfer(snapshotTransfer(event.dataTransfer, false), "preview", motionEnabled);
+    if (!decision.eligible) {
+      // A protected transfer can briefly expose no types while the tab regains focus.
+      if (currentStatus === "eligible" && decision.reason !== "ambiguous-preview") emitStatus("idle");
       return;
     }
+    if (currentStatus !== "eligible" && !findStickerContext()) return;
 
-    const decision = policy.classifyTransfer(
-      snapshotTransfer(event.dataTransfer, false),
-      "preview",
-    );
-    if (decision.eligible) {
-      emitStatus("eligible");
+    // Keep WhatsApp's first dragenter. Once its overlay exists, crossing one of
+    // its child elements should not start another attachment flow.
+    if (event.type === "dragenter" && currentStatus === "eligible" &&
+        getActiveDragAttachFlow(getWhatsAppUiDismissApi())) {
+      event.stopPropagation();
     }
+    emitStatus("eligible");
   }
 
-  function scheduleDragEnd() {
+  function scheduleDragEnd(event) {
+    if (currentStatus !== "eligible") return;
+    if (event.type === "dragleave" && event.relatedTarget &&
+        document.documentElement.contains(event.relatedTarget)) {
+      if (getActiveDragAttachFlow(getWhatsAppUiDismissApi())) event.stopPropagation();
+      return;
+    }
     clearTimeout(leaveTimer);
     leaveTimer = setTimeout(() => {
-      if (!dropInFlight) {
-        emitStatus("idle");
-      }
-    }, 120);
+      if (currentStatus === "eligible" && !dropInFlight) emitStatus("idle");
+    }, 350);
   }
 
-  async function handleDrop(event) {
-    clearTimeout(leaveTimer);
-    if (!extensionEnabled || dropInFlight) {
+  // Read the transfer synchronously. Chromium clears clipboard and drag data
+  // when the event returns, even if a later conversion is still running.
+  function handlePaste(event) {
+    if (!pasteEnabled || !event.isTrusted || !extensionEnabled || dropInFlight) return;
+    const context = findStickerContext();
+    if (!context || !context.composer.contains(event.target)) return;
+    const transfer = event.clipboardData;
+    const files = Array.from(transfer?.files || []);
+    if (files.length) {
+      if (files.length === 1 && policy.acceptsInput(files[0], motionEnabled)) {
+        void openSticker(event, context, () => files);
+      }
       return;
     }
+    const url = policy.directPasteUrl(readTransferData(transfer, "text/plain"));
+    if (!url) return;
+    const expectsMotion = policy.isMotionInput({ name: new URL(url).pathname });
+    if (!motionEnabled && expectsMotion) return;
+    const normalize = getWhatsAppFileNormalizer();
+    if (!normalize) {
+      emitStatus("failed", "Sticker import unavailable. The link will paste normally.");
+      return;
+    }
+    // Supply the same two flavors as a browser image drag. WhatsApp resolves
+    // the image through its own normalizer with its existing network policy.
+    const image = document.implementation.createHTMLDocument("").createElement("img");
+    image.setAttribute("src", url);
+    const data = new DataTransfer();
+    data.setData("text/uri-list", url);
+    data.setData("text/html", image.outerHTML);
+    const drop = new DragEvent("drop", { dataTransfer: data });
+    void openSticker(event, context, async () => {
+      const normalized = await normalize(drop, ["^image/", "^video/"]);
+      if (expectsMotion && normalized?.length === 1 && !policy.isMotionInput(normalized[0])) {
+        throw new Error("lost-animation");
+      }
+      return normalized;
+    });
+  }
 
+  function handleDrop(event) {
+    clearTimeout(leaveTimer);
+    if (!extensionEnabled || dropInFlight) return;
+    const decision = policy.classifyTransfer(snapshotTransfer(event.dataTransfer, true), "drop", motionEnabled);
+    if (!decision.eligible) {
+      if (currentStatus === "eligible") emitStatus("idle");
+      return;
+    }
     const context = findStickerContext();
     if (!context) {
-      emitStatus("idle");
+      if (!document.querySelector(EDITOR_PROOF_SELECTOR)) emitStatus("failed", "Open a sendable chat and try again.");
       return;
     }
-
-    const snapshot = snapshotTransfer(event.dataTransfer, true);
-    const decision = policy.classifyTransfer(snapshot, "drop");
-    if (!decision.eligible) {
-      emitStatus("idle");
+    const api = getWhatsAppUiDismissApi();
+    const flow = api && getActiveDragAttachFlow(api);
+    if (!flow || typeof flow.requestDismiss !== "function" ||
+        (decision.kind !== "local-image" && !getWhatsAppFileNormalizer())) {
+      emitStatus("failed", "Sticker editor unavailable. WhatsApp will handle this drop.");
       return;
     }
+    void openSticker(event, context, () => normalizeDroppedFiles(event, decision), api, flow);
+  }
 
-    if (decision.kind !== "local-image" && !getWhatsAppFileNormalizer()) {
-      emitStatus("idle");
-      return;
-    }
-
-    const uiDismissApi = getWhatsAppUiDismissApi();
-    if (!uiDismissApi) {
-      emitStatus("idle");
-      return;
-    }
-
-    const dragAttachFlow = getActiveDragAttachFlow(uiDismissApi);
-    if (!dragAttachFlow || typeof dragAttachFlow.requestDismiss !== "function") {
-      emitStatus("idle");
-      return;
-    }
-
+  async function openSticker(event, context, loadFiles, api, flow) {
     stopWhatsAppDrop(event);
+    clearTimeout(leaveTimer);
     dropInFlight = true;
-    const startedAtRevision = controlRevision;
-    const startedAtNavigationRevision = conversationNavigationRevision;
+    const operation = new AbortController();
+    activeOperation = operation;
+    const revision = conversationNavigationRevision;
+    const control = controlRevision;
+    const timeout = setTimeout(() => operation.abort(), 25000);
+    const interrupted = new Promise((_, reject) => {
+      operation.signal.addEventListener("abort", () => reject(new Error("interrupted")), { once: true });
+    });
     emitStatus("processing");
-
     try {
-      const files = await normalizeDroppedFiles(event, decision);
-      if (files.length !== 1 || !policy.isSupportedImageMetadata(files[0])) {
-        throw new Error("unsupported-image");
-      }
-
-      const attachFlowClosed = await closeWhatsAppDragAttachFlow(uiDismissApi, dragAttachFlow);
-      if (!extensionEnabled || startedAtRevision !== controlRevision) {
-        throw new Error("extension-disabled");
-      }
-      const freshContext = attachFlowClosed
-        ? await resolveStableStickerContext(context, startedAtNavigationRevision)
-        : null;
-      if (!freshContext) {
-        throw new Error("chat-context-changed");
-      }
-
-      routeFileToStickerInput(freshContext.input, files[0]);
-      const editorOpened = await waitForStickerEditor(EDITOR_WAIT_MS);
-      emitStatus(
-        editorOpened ? "opened" : "failed",
-        editorOpened ? "" : "WhatsApp did not open the sticker editor.",
-      );
+      const files = await Promise.race([loadFiles(), interrupted]);
+      if (files?.length !== 1 || !policy.acceptsInput(files[0], motionEnabled)) throw new Error("unsupported");
+      if (flow && !await closeWhatsAppDragAttachFlow(api, flow)) throw new Error("attach-flow");
+      operation.signal.throwIfAborted();
+      const media = root[Symbol.for("wa-sticker-plugin/sticker-media/v1")];
+      const file = await Promise.race([media.prepare(files[0], settings, operation.signal), interrupted]);
+      if (!file || !["image/webp", "image/jpeg", "image/png", ""].includes(file.type)) throw new Error("unsupported");
+      const fresh = await resolveStableStickerContext(context, revision);
+      operation.signal.throwIfAborted();
+      if (!fresh || conversationNavigationRevision !== revision) throw new Error("chat-context-changed");
+      routeFileToStickerInput(fresh.input, file);
+      const opened = await Promise.race([waitForStickerEditor(EDITOR_WAIT_MS), interrupted]);
+      if (opened) emitStatus("opened");
+      else emitStatus("failed", "WhatsApp did not open the sticker editor. Try Create Sticker.");
     } catch (error) {
-      if (extensionEnabled && startedAtRevision === controlRevision) {
-        emitStatus(
-          "failed",
-          error?.message === "chat-context-changed"
-            ? "Chat changed. Drop the image again."
-            : "Could not open the sticker editor. Use Create Sticker and retry.",
-        );
-      } else {
-        emitStatus("idle");
+      if (extensionEnabled && control === controlRevision) {
+        let message = "Could not open the sticker editor. Try pasting the image file.";
+        if (revision !== conversationNavigationRevision || error?.message === "chat-context-changed") {
+          message = "Chat changed. Try again in the current chat.";
+        } else if (error?.message === "lost-animation") {
+          message = "This link returned a still image. Drop the original GIF or video file.";
+        } else if (error?.name === "StickerMediaError") {
+          message = error.message;
+        } else if (operation.signal.aborted) {
+          message = "Sticker preparation timed out. Try a smaller file.";
+        }
+        emitStatus("failed", message);
       }
     } finally {
+      clearTimeout(timeout);
+      activeOperation = null;
       dropInFlight = false;
     }
   }
 
   function setDragListenersAttached(shouldAttach) {
-    if (shouldAttach === dragListenersAttached) {
-      return;
-    }
-
+    if (shouldAttach === dragListenersAttached) return;
     const method = shouldAttach ? "addEventListener" : "removeEventListener";
     root[method]("dragenter", previewEligibleDrop, true);
     root[method]("dragover", previewEligibleDrop, true);
     root[method]("dragleave", scheduleDragEnd, true);
     root[method]("drop", handleDrop, true);
+    root[method]("paste", handlePaste, true);
+    root[method]("dragend", scheduleDragEnd, true);
     root[method]("click", recordConversationNavigation, true);
     dragListenersAttached = shouldAttach;
   }
@@ -499,12 +543,19 @@
 
   root.addEventListener(CONTROL_EVENT, (event) => {
     const enabled = event.detail?.enabled === true;
+    pasteEnabled = event.detail?.paste !== false;
+    motionEnabled = event.detail?.motion !== false;
+    if (event.detail?.attribution) {
+      const { pack, author } = event.detail.attribution;
+      settings = { pack: String(pack || "").slice(0, 128), author: String(author || "").slice(0, 128) };
+    }
     if (extensionEnabled !== enabled) {
       controlRevision += 1;
     }
     extensionEnabled = enabled;
     setDragListenersAttached(enabled);
     if (!enabled) {
+      activeOperation?.abort();
       clearTimeout(leaveTimer);
       emitStatus("idle");
     }
@@ -516,6 +567,7 @@
       controlRevision += 1;
     }
     extensionEnabled = false;
+    activeOperation?.abort();
     pendingConversationNavigation = null;
     setDragListenersAttached(false);
     emitStatus("idle");

@@ -1,0 +1,32 @@
+:root {
+  font: 14px/1.45 system-ui, sans-serif;
+  color: #1e2330;
+  background: #faf9fe;
+  accent-color: #5541c9;
+}
+* { box-sizing: border-box; }
+body { min-width: 330px; margin: 0; }
+main { width: 340px; max-width: 100%; margin: auto; padding: 18px; }
+header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+h1, h2, p { margin: 0; }
+h1 { font-size: 21px; letter-spacing: -.03em; }
+h2 { font-size: 16px; }
+fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; font-weight: 650; cursor: pointer; }
+.row.primary { padding: 10px 12px; border-radius: 10px; background: #ebe7ff; margin-bottom: 4px; }
+small, p { display: block; font-size: 12px; font-weight: 400; color: #535564; }
+input[role="switch"] {
+  appearance: none; flex: none; width: 36px; height: 22px; padding: 3px;
+  border: 1px solid #747687; border-radius: 20px; background: #797b88; cursor: pointer;
+}
+input[role="switch"]::after { content: ""; display: block; width: 14px; height: 14px; border-radius: 50%; background: white; }
+input:checked[role="switch"] { background: #5541c9; border-color: #5541c9; }
+input:checked[role="switch"]::after { margin-left: auto; }
+section { margin-top: 6px; padding-top: 14px; border-top: 1px solid #dcdbe5; }
+section p { margin: 3px 0 10px; }
+.field { display: block; font-size: 12px; font-weight: 650; margin: 8px 0; }
+.field input { width: 100%; display: block; padding: 7px 9px; margin-top: 3px; border-radius: 6px; border: 1px solid #aaa8b6; font: inherit; font-weight: 400; }
+button { border: 0; border-radius: 7px; padding: 8px 14px; margin-top: 4px; font: inherit; font-weight: 600; color: white; background: #4934ba; cursor: pointer; }
+output { display: block; font-size: 12px; color: #414452; }
+output:not(:empty) { padding-top: 8px; }
+:focus-visible { outline: 3px solid #7862fa; outline-offset: 2px; }

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Drop as Sticker settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+<main>
+  <header>
+    <img src="../icons/active-48.png" alt="" width="40" height="40">
+    <h1>Drop as Sticker</h1>
+  </header>
+  <form>
+    <fieldset disabled>
+      <label class="row primary">
+        <span>Enable extension</span><input name="enabled" type="checkbox" role="switch">
+      </label>
+      <label class="row">
+        <span>Paste to create<small>Paste an image or a direct media link in chat.</small></span>
+        <input name="paste" type="checkbox" role="switch">
+      </label>
+      <label class="row">
+        <span>Animated stickers<small>GIFs up to 10 seconds. Videos up to 4 seconds.</small></span>
+        <input name="motion" type="checkbox" role="switch">
+      </label>
+      <section>
+        <h2>Sticker attribution</h2>
+        <p>Optional pack details embedded in the file. WhatsApp may remove them during editing.</p>
+        <label class="field">Pack name<input name="pack" maxlength="128" autocomplete="off"></label>
+        <label class="field">Author<input name="author" maxlength="128" autocomplete="off"></label>
+        <button>Save attribution</button>
+      </section>
+    </fieldset>
+    <output aria-live="polite"></output>
+  </form>
+</main>
+<script src="options.js"></script>
+</body>
+</html>
